@@ -9,8 +9,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 
-import undetected_chromedriver as uc
-
 # --- Config ---
 BASE_URL = "https://www.clashchamps.com/i-need-a-base/"
 SAVE_DIR = "data/raw"
@@ -39,18 +37,15 @@ def build_url(archetype_id, page):
 def make_driver():
     options = uc.ChromeOptions()
     options.add_argument("--window-size=1920,1080")
-    driver = uc.Chrome(options=options, headless=False, version_main=145)  # non-headless
+    driver = uc.Chrome(options=options, headless=False, version_main=145)
     return driver
 
 
 def get_image_urls(driver, archetype_id, page):
     """Load a listing page and extract full-res image URLs."""
     url = build_url(archetype_id, page)
-
     driver.get(url)
     time.sleep(5)  # wait for Cloudflare challenge to resolve
-    print(f"    Page title: {driver.title}")
-    print(f"    Page source snippet: {driver.page_source[:500]}")
 
     try:
         WebDriverWait(driver, 10).until(
@@ -71,24 +66,21 @@ def get_image_urls(driver, archetype_id, page):
     return urls
 
 
-def download_image(driver, url, save_path):
-    """Download image using Selenium's cookies passed to requests."""
-    session = requests.Session()
-    # Copy cookies from the browser into requests
-    for cookie in driver.get_cookies():
-        session.cookies.set(cookie['name'], cookie['value'])
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Referer": "https://www.clashchamps.com/"
-    })
-    try:
-        response = session.get(url, timeout=15)
-        response.raise_for_status()
-        with open(save_path, "wb") as f:
-            f.write(response.content)
+def download_image(url, save_path):
+    """Use curl to download, bypasses Cloudflare TLS fingerprinting."""
+    import subprocess
+    result = subprocess.run([
+        "curl", "-L", "-o", save_path,
+        "-H", "Referer: https://www.clashchamps.com/",
+        "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "--silent", "--show-error",
+        url
+    ], capture_output=True, text=True)
+    
+    if result.returncode == 0 and os.path.exists(save_path) and os.path.getsize(save_path) > 0:
         return True
-    except requests.RequestException as e:
-        print(f"  [!] Failed to download {url}: {e}")
+    else:
+        print(f"  [!] curl failed: {result.stderr}")
         return False
 
 def scrape_archetype(driver, archetype_name, archetype_id):
@@ -124,7 +116,7 @@ def scrape_archetype(driver, archetype_name, archetype_id):
                     img_count += 1
                     continue
 
-                success = download_image(driver, url, save_path)
+                success = download_image(url, save_path)
                 if success:
                     img_count += 1
 
@@ -143,17 +135,11 @@ def main():
     print(f"Saving to: {os.path.abspath(SAVE_DIR)}")
 
     driver = make_driver()
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/120.0.0.0 Safari/537.36"
-    })
 
     try:
         total = 0
         for archetype_name, archetype_id in ARCHETYPES.items():
-            count = scrape_archetype(driver, session, archetype_name, archetype_id)
+            count = scrape_archetype(driver, archetype_name, archetype_id)
             total += count
     finally:
         driver.quit()
