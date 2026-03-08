@@ -9,12 +9,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import undetected_chromedriver as uc
 
-# --- Config ---
 BASE_URL = "https://www.clashchamps.com/i-need-a-base/"
 SAVE_DIR = "data/raw"
 TOWN_HALL = 18
-PAGE_DELAY = (2.0, 4.0)   # delay between page loads
-IMG_DELAY  = (0.5, 1.5)   # delay between image downloads
+PAGE_DELAY = (2.0, 4.0)   
+IMG_DELAY  = (0.5, 1.5)   
 MAX_EMPTY_PAGES = 3
 
 ARCHETYPES = {
@@ -42,10 +41,9 @@ def make_driver():
 
 
 def get_image_urls(driver, archetype_id, page):
-    """Load a listing page and extract full-res image URLs."""
     url = build_url(archetype_id, page)
     driver.get(url)
-    time.sleep(5)  # wait for Cloudflare challenge to resolve
+    time.sleep(5)  
 
     try:
         WebDriverWait(driver, 10).until(
@@ -67,7 +65,6 @@ def get_image_urls(driver, archetype_id, page):
 
 
 def download_image(url, save_path):
-    """Use curl to download, bypasses Cloudflare TLS fingerprinting."""
     import subprocess
     result = subprocess.run([
         "curl", "-L", "-o", save_path,
@@ -84,7 +81,6 @@ def download_image(url, save_path):
         return False
 
 def scrape_archetype(driver, archetype_name, archetype_id):
-    """Scrape all images for a given archetype."""
     save_dir = os.path.join(SAVE_DIR, archetype_name)
     os.makedirs(save_dir, exist_ok=True)
 
