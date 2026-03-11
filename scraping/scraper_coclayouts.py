@@ -25,7 +25,6 @@ def get_page_url(page):
 
 
 def get_image_urls(page):
-    """Parse a listing page and return full-size image URLs."""
     url = get_page_url(page)
     try:
         response = requests.get(url, headers=HEADERS, timeout=10)
@@ -49,7 +48,6 @@ def get_image_urls(page):
 
 
 def download_image(url, save_path):
-    """Use curl to download, bypasses Cloudflare TLS fingerprinting."""
     result = subprocess.run([
         "curl", "-L", "-o", save_path,
         "-H", f"Referer: {BASE_URL}",
